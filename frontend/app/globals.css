@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* 在 HTML 上的 .dark 类时，强制覆盖变量，确保按钮切换可见生效 */
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* Use safe system font stacks as fallback now that next/font is removed */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+
+  /* Brand color tokens (primary: #8473AD) */
+  --color-brand: #8473AD;
+  /* Light tints */
+  --color-brand-50: color-mix(in oklab, var(--color-brand) 10%, white);
+  --color-brand-100: color-mix(in oklab, var(--color-brand) 20%, white);
+  --color-brand-200: color-mix(in oklab, var(--color-brand) 30%, white);
+  --color-brand-300: color-mix(in oklab, var(--color-brand) 45%, white);
+  --color-brand-400: color-mix(in oklab, var(--color-brand) 60%, white);
+  --color-brand-500: var(--color-brand);
+  /* Dark shades */
+  --color-brand-600: color-mix(in oklab, var(--color-brand) 85%, black);
+  --color-brand-700: color-mix(in oklab, var(--color-brand) 70%, black);
+  --color-brand-800: color-mix(in oklab, var(--color-brand) 55%, black);
+  --color-brand-900: color-mix(in oklab, var(--color-brand) 40%, black);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: #fafafa;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #0a0a0a;
+  }
+}
+
+/* 当 .dark 类存在时，立即覆盖 body 背景，增强对比度 */
+html.dark body {
+  background: #0a0a0a;
+  color: var(--foreground);
+}
