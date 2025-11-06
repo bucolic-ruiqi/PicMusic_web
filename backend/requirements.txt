@@ -1,0 +1,16 @@
+torch>=2.0.0
+transformers>=4.30.0
+Pillow>=9.0.0
+numpy>=1.20.0
+requests>=2.25.0
+torchvision>=0.15.0
+sympy>=1.10.0
+matplotlib>=3.5.0
+tqdm>=4.64
+openai
+pandas
+mysql-connector-python
+scikit-learn
+fastapi
+pydantic
+uvicorn

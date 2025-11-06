@@ -11,6 +11,7 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     try {
@@ -20,11 +21,36 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
     } catch {}
   }, []);
 
+  // 页面滚动进度（0~1）
+  useEffect(() => {
+    const calc = () => {
+      try {
+        const doc = document.documentElement;
+        const body = document.body;
+        const scrollTop = doc.scrollTop || body.scrollTop || 0;
+        const scrollHeight = doc.scrollHeight || body.scrollHeight || 1;
+        const clientHeight = doc.clientHeight || window.innerHeight || 1;
+        const denom = Math.max(1, scrollHeight - clientHeight);
+        const p = Math.max(0, Math.min(1, scrollTop / denom));
+        setScrollProgress(p);
+      } catch {}
+    };
+    calc();
+    window.addEventListener("scroll", calc, { passive: true } as AddEventListenerOptions);
+    window.addEventListener("resize", calc);
+    return () => {
+      window.removeEventListener("scroll", calc as any);
+      window.removeEventListener("resize", calc);
+    };
+  }, []);
+
   const toggleTheme = useCallback(() => {
     try {
       const root = document.documentElement;
       const nextDark = !root.classList.contains("dark");
       root.classList.toggle("dark", nextDark);
+      // Hint browsers for built-in UI theming
+      root.style.colorScheme = nextDark ? "dark" : "light";
       localStorage.setItem("theme", nextDark ? "dark" : "light");
       setIsDark(nextDark);
     } catch {}
@@ -50,14 +76,21 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 w-full border-b border-white/16 bg-white/16 backdrop-blur-sm backdrop-saturate-110 shadow-[0_6px_24px_0_rgba(31,38,135,0.10)] dark:border-white/8 dark:bg-zinc-900/15 supports-[backdrop-filter]:bg-white/14 dark:supports-[backdrop-filter]:bg-zinc-900/10">
+      <header className="fixed inset-x-0 top-0 z-50 w-full border-b border-white/30 bg-white/60 backdrop-blur-md backdrop-saturate-150 shadow-[0_10px_40px_rgba(31,38,135,0.08)] supports-[backdrop-filter]:bg-white/45 dark:border-white/10 dark:bg-zinc-900/40 dark:supports-[backdrop-filter]:bg-zinc-900/30">
         {/* 毛玻璃高光与遮罩层（不拦截点击） */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/22 to-white/10 dark:from-white/8 dark:to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/70 via-white/40 to-white/20 dark:from-white/10 dark:via-white/5 dark:to-transparent" />
+        {/* 顶部滚动进度条（主色调） */}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-[2px]">
+          <div
+            className="h-full bg-brand-700 transition-[width] duration-75 ease-out dark:bg-brand-500"
+            style={{ width: `${Math.round(scrollProgress * 100)}%` }}
+          />
+        </div>
         <div className="relative flex items-center justify-between px-3 py-2 sm:px-4">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 active:opacity-80" aria-label="返回首页" title="返回首页">
             <Image src="/logo.png" alt="PicMusic" width={32} height={32} />
             <span className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">PicMusic</span>
-          </div>
+          </Link>
           <nav className="flex items-center gap-2 text-sm">
             {/* 搜索按钮 + 向左弹出的输入框（绝对定位，不会被容器裁切） */}
             <div className="relative">

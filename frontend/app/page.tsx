@@ -1,10 +1,11 @@
 import Header from "@/components/Header";
 import Timeline from "@/components/Timeline";
 import FeaturedCarouselClient from "@/components/FeaturedCarouselClient";
-import { diaries } from "@/data/diaries";
 import MetricsBar from "@/components/MetricsBar";
+import { getDiaries } from "@/lib/diaryRepo";
 
-export default function Home() {
+export default async function Home() {
+  const diaries = await getDiaries(1);
   return (
     <div>
       <Header noSpacer />
@@ -33,7 +34,7 @@ export default function Home() {
         </div>
 
         <div className="mt-6">
-          <Timeline diaries={diaries} />
+          <Timeline diaries={diaries as any} />
         </div>
       </div>
 

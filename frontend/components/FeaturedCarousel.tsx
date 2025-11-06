@@ -78,10 +78,9 @@ export default function FeaturedCarousel({ items }: Props) {
               {/* 渐变信息层 */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 text-white">
-                <div className="mx-auto max-w-7xl px-6 pb-5 sm:px-8 lg:pb-6">
+                <div className="mx-auto max-w-7xl px-6 pb-5 text-right sm:px-8 lg:pb-6">
                   <div className="text-xs opacity-90">{fmtDate(d.date)}</div>
                   <h3 className="mt-1 line-clamp-1 text-xl font-semibold tracking-tight lg:text-2xl">{d.location}</h3>
-                  <p className="mt-1 line-clamp-2 text-sm opacity-90 lg:line-clamp-3 lg:text-base">{d.text}</p>
                 </div>
               </div>
             </article>

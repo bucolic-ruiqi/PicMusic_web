@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Header from "@/components/Header";
-import { diaries } from "@/data/diaries";
+import { getDiaries } from "@/lib/diaryRepo";
 
 function fmtDate(iso: string) {
   try {
@@ -18,9 +18,10 @@ function fmtDate(iso: string) {
   }
 }
 
-export default function ExplorePage({ searchParams }: { searchParams: { q?: string } }) {
+export default async function ExplorePage({ searchParams }: { searchParams: { q?: string } }) {
   const q = (searchParams.q || "").trim();
   const qLower = q.toLowerCase();
+  const diaries = await getDiaries(1);
   const results = q
     ? diaries.filter((d) => {
         const hay = `${d.location} ${d.text || ""} ${d.mood || ""}`.toLowerCase();

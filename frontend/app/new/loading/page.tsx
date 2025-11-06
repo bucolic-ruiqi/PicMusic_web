@@ -10,7 +10,7 @@ export default function LoadingRecommendationPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      router.replace(next);
+      router.replace(`/new/recommend?next=${encodeURIComponent(next)}`);
     }, 1500);
     return () => clearTimeout(t);
   }, [next, router]);

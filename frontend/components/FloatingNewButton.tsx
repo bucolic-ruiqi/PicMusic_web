@@ -13,13 +13,13 @@ export default function FloatingNewButton() {
     <Link
       href="/new"
       aria-label="新建"
-      className="fixed bottom-6 right-6 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg ring-1 ring-brand-700/30 transition-transform hover:scale-105 hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-600 sm:bottom-8 sm:right-8"
+      className="fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg ring-1 ring-brand-700/30 transition-transform hover:scale-105 hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-600 sm:bottom-8 sm:right-8"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         fill="currentColor"
-        className="h-6 w-6"
+        className="h-7 w-7"
         aria-hidden
       >
         <path d="M12 5c.552 0 1 .448 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H6a1 1 0 1 1 0-2h5V6c0-.552.448-1 1-1z" />

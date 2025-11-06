@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode so toggling `.dark` on <html> works
+   Tailwind v4 defaults to media-based dark mode; this remaps the `dark:`
+   variant to activate when any ancestor has the `.dark` class. */
+@custom-variant dark (&:where(.dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

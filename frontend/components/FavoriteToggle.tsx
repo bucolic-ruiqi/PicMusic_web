@@ -1,41 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-function loadFavorites(): Set<string> {
-  try {
-    const raw = localStorage.getItem("favoriteDiaries");
-    if (!raw) return new Set();
-    const arr: unknown = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? (arr as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
+export default function FavoriteToggle({ diaryId, initial }: { diaryId: string; initial?: boolean }) {
+  const [fav, setFav] = useState(Boolean(initial));
 
-function saveFavorites(set: Set<string>) {
-  localStorage.setItem("favoriteDiaries", JSON.stringify(Array.from(set)));
-  // 通知其它组件（如轮播客户端）
-  window.dispatchEvent(new StorageEvent("storage", { key: "favoriteDiaries" }));
-}
-
-export default function FavoriteToggle({ diaryId }: { diaryId: string }) {
-  const [fav, setFav] = useState(false);
-
-  useEffect(() => {
-    setFav(loadFavorites().has(diaryId));
-  }, [diaryId]);
+  const toggle = async () => {
+    try {
+      const res = await fetch(`/api/diaries/${encodeURIComponent(diaryId)}/favorite`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorite: !fav }),
+      });
+      if (res.ok) {
+        setFav((v) => !v);
+      }
+    } catch {}
+  };
 
   return (
     <button
       type="button"
       aria-pressed={fav}
-      onClick={() => {
-        const s = loadFavorites();
-        if (s.has(diaryId)) s.delete(diaryId); else s.add(diaryId);
-        saveFavorites(s);
-        setFav(s.has(diaryId));
-      }}
+      onClick={toggle}
       className={
         "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs ring-1 transition " +
         (fav

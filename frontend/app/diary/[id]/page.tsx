@@ -1,10 +1,10 @@
 import Header from "@/components/Header";
-import { diaries } from "@/data/diaries";
 import type { Diary } from "@/lib/types";
 import Link from "next/link";
 // 强制动态渲染，避免某些环境下动态段未生成导致的访问异常
 export const dynamic = "force-dynamic";
 import DiaryEditor from "@/components/DiaryEditor";
+import { getDiaryById, getDiaries } from "@/lib/diaryRepo";
 
 function fmtRange(d: Diary) {
   const end = new Date(d.endDate ?? d.date);
@@ -18,7 +18,7 @@ function fmtRange(d: Diary) {
   return `${s} – ${e}`;
 }
 
-export default function DiaryDetail({ params }: { params: { id?: string } }) {
+export default async function DiaryDetail({ params }: { params: { id?: string } }) {
   const idRaw = params?.id ?? "";
   let id: string;
   try {
@@ -26,10 +26,11 @@ export default function DiaryDetail({ params }: { params: { id?: string } }) {
   } catch {
     id = String(idRaw ?? "");
   }
-  let diary = diaries.find((d) => d.id === id);
+  let diary = await getDiaryById(Number(id), 1);
   // 兜底：若找不到，允许使用首条数据，避免 404 打断体验
   if (!diary) {
-    diary = diaries[0];
+    const list = await getDiaries(1);
+    diary = list[0] as any;
   }
 
   return (
@@ -40,7 +41,7 @@ export default function DiaryDetail({ params }: { params: { id?: string } }) {
           ← 返回时间线
         </Link>
       </div>
-      <DiaryEditor initial={diary} />
+      {diary ? <DiaryEditor initial={diary as Diary} /> : null}
     </div>
   );
 }

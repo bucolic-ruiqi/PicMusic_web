@@ -39,4 +39,5 @@ export type Diary = {
   text: string;
   photos: string[]; // public/ 相对路径或远程 URL
   tracks?: Track[];
+  isFavorite?: boolean; // from DB
 };
