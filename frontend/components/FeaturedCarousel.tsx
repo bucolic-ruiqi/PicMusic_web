@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Diary } from "@/lib/types";
+import { buildDiaryHref } from "@/lib/config";
 
 type Props = {
   items: Diary[];
@@ -62,7 +63,7 @@ export default function FeaturedCarousel({ items }: Props) {
       >
         {slides.map((d) => (
           <Link
-            href={`/diary/${d.id}`}
+            href={buildDiaryHref(d.id)}
             key={d.id}
             className="relative aspect-[16/9] w-[88%] shrink-0 snap-center overflow-hidden sm:w-[78%] md:w-[68%] lg:w-full lg:aspect-[16/6]"
           >

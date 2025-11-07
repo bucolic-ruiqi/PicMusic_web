@@ -16,13 +16,19 @@ export default function GlobalAudioBar() {
     const onTime = () => setProgress(a.currentTime || 0);
     const onLoaded = () => setDuration(a.duration || 0);
     const onEnded = () => setPlaying(false);
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("loadedmetadata", onLoaded);
     a.addEventListener("ended", onEnded);
+    a.addEventListener("play", onPlay);
+    a.addEventListener("pause", onPause);
     return () => {
       a.removeEventListener("timeupdate", onTime);
       a.removeEventListener("loadedmetadata", onLoaded);
       a.removeEventListener("ended", onEnded);
+      a.removeEventListener("play", onPlay);
+      a.removeEventListener("pause", onPause);
     };
   }, []);
 
@@ -42,8 +48,18 @@ export default function GlobalAudioBar() {
       if (command === "pause" || (isSame && !a.paused)) {
         a.pause();
         setPlaying(false);
+        try {
+          window.dispatchEvent(new CustomEvent("globalplayerstate", { detail: { trackId: detail.track.id, playing: false } }));
+        } catch {}
       } else {
-        a.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        a.play()
+          .then(() => {
+            setPlaying(true);
+            try {
+              window.dispatchEvent(new CustomEvent("globalplayerstate", { detail: { trackId: detail.track.id, playing: true } }));
+            } catch {}
+          })
+          .catch(() => setPlaying(false));
       }
     };
     window.addEventListener("globalplay" as any, handler as any);
@@ -88,16 +104,26 @@ export default function GlobalAudioBar() {
             const a = audioRef.current;
             if (!a) return;
             if (!src) return; // 尚未选择歌曲
-            if (a.paused) a.play().then(() => setPlaying(true));
-            else a.pause(), setPlaying(false);
+            if (a.paused) {
+              a.play().then(() => {
+                setPlaying(true);
+                try {
+                  if (track) window.dispatchEvent(new CustomEvent("globalplayerstate", { detail: { trackId: track.id, playing: true } }));
+                } catch {}
+              });
+            } else {
+              a.pause();
+              setPlaying(false);
+              try {
+                if (track) window.dispatchEvent(new CustomEvent("globalplayerstate", { detail: { trackId: track.id, playing: false } }));
+              } catch {}
+            }
           }}
           className={
             "inline-flex h-10 w-10 items-center justify-center rounded-full text-white transition " +
             (!src
               ? "bg-zinc-300 cursor-not-allowed"
-              : playing
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-brand-700 hover:bg-brand-800")
+              : "bg-brand-700 hover:bg-brand-800")
           }
           aria-label={!src ? "未选择歌曲" : playing ? "暂停" : "播放"}
           title={!src ? "未选择歌曲" : playing ? "暂停" : "播放"}
@@ -145,7 +171,7 @@ export default function GlobalAudioBar() {
               style={{ left: `calc(${duration > 0 ? Math.min(100, (progress / duration) * 100) : 0}% - 6px)` }}
             />
           </div>
-          <span className="text:[11px] tabular-nums text-zinc-500 dark:text-zinc-400">{mmss(duration)}</span>
+          <span className="text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400">{mmss(duration)}</span>
         </div>
       </div>
     </div>

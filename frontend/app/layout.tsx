@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import FloatingNewButton from "@/components/FloatingNewButton";
-import GlobalAudioBar from "@/components/GlobalAudioBar";
+import ConditionalGlobalAudioBar from "@/components/ConditionalGlobalAudioBar";
 
 export const metadata: Metadata = {
   title: "PicMusic - 音乐旅行日记",
@@ -29,8 +29,8 @@ export default function RootLayout({
         />
         <div className="min-h-dvh bg-gradient-to-b from-white to-zinc-50 dark:from-black dark:to-zinc-950">
           {children}
-          {/* 全局播放器（悬浮在 + 左侧）*/}
-          <GlobalAudioBar />
+          {/* 全局播放器（在新建加载页隐藏进度条）*/}
+          <ConditionalGlobalAudioBar />
           {/* 全局悬浮新建按钮 */}
           <FloatingNewButton />
         </div>

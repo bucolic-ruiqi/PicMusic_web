@@ -8,7 +8,6 @@ import MultiUploadArea from "@/components/MultiUploadArea";
 import MoodBadge from "@/components/MoodBadge";
 import FavoriteToggle from "@/components/FavoriteToggle";
 import TrackPlayerList from "@/components/TrackPlayerList";
-import { recommendTracks } from "../lib/recommend";
 
 function fmtRangeISO(start?: string, end?: string, fallback?: string) {
   const endDate = end ? new Date(end) : fallback ? new Date(fallback) : new Date();
@@ -49,7 +48,6 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
   const [editing, setEditing] = useState<boolean>(false);
   const [confirmingDelete, setConfirmingDelete] = useState<boolean>(false);
 
-  const recs: Track[] = useMemo(() => recommendTracks(mood), [mood]);
   const selectedIds = useMemo(() => new Set(tracks.map((t) => t.id)), [tracks]);
 
   const onSelectPhotos = (_files: File[], urls: string[]) => {
@@ -82,9 +80,15 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
   };
 
   const saveAll = async () => {
+    // 保护：若 id 非数字，阻止保存并提示
+    if (!Number.isFinite(Number(initial.id))) {
+      console.error("Invalid diary id, cannot save:", initial.id);
+      alert("当前日记 ID 非法，无法保存到数据库。请返回首页重新进入或选择其它日记。");
+      return;
+    }
     setSaving(true);
     try {
-      await fetch(`/api/diaries/${encodeURIComponent(initial.id)}`, {
+      const putRes = await fetch(`/api/diaries/${encodeURIComponent(initial.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -94,9 +98,32 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
           endDate: new Date(endDate).toISOString(),
           text,
           photos,
-          // trackIds: tracks.map(t => Number(t.id)).filter(n => Number.isFinite(n)), // 可按需开启
+          trackIds: tracks
+            .map((t) => String(t.id))
+            .filter((s) => /^\d+$/.test(s)),
         }),
       });
+      if (!putRes.ok) {
+        let msg = "保存失败";
+        try {
+          const err = await putRes.json();
+          msg = err?.error || msg;
+        } catch {}
+        alert(msg);
+        return;
+      }
+      // 保存后拉取最新数据，确保与数据库一致
+      const r = await fetch(`/api/diaries/${encodeURIComponent(initial.id)}`);
+      if (r.ok) {
+        const updated: Diary = await r.json();
+        setLocation(updated.location);
+        setMood(updated.mood as Mood);
+        setStartDate((updated.startDate ?? updated.date).slice(0, 10));
+        setEndDate((updated.endDate ?? updated.date).slice(0, 10));
+        setText(updated.text);
+        setPhotos(updated.photos ?? []);
+        setTracks(updated.tracks ?? []);
+      }
       setSaved(true);
       setEditing(false);
     } finally {
@@ -105,6 +132,10 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
   };
 
   const deleteDiary = async () => {
+    if (!Number.isFinite(Number(initial.id))) {
+      alert("当前日记 ID 非法，无法删除。");
+      return;
+    }
     await fetch(`/api/diaries/${encodeURIComponent(initial.id)}`, { method: "DELETE" });
     router.replace("/");
   };
@@ -148,13 +179,13 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
                   : "bg-white text-brand-700 ring-brand-200 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-brand-300 dark:ring-brand-900/50 dark:hover:bg-zinc-800")
               }
               aria-pressed={editing}
-              title={editing ? "完成编辑" : "编辑"}
+              title={editing ? "退出编辑" : "编辑"}
             >
               {/* pencil icon */}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={"h-3.5 w-3.5 " + (editing ? "text-white" : "text-brand-700 dark:text-brand-300") }>
                 <path d="M20.71 5.63 18.37 3.3a1 1 0 0 0-1.41 0L6 14.25V18h3.75l10.95-10.95a1 1 0 0 0 0-1.41ZM8.92 16H8v-.92l8.95-8.95.92.92L8.92 16Z" />
               </svg>
-              {editing ? "完成" : "编辑"}
+              {editing ? "退出" : "编辑"}
             </button>
             {/* 删除按钮（与收藏大小一致，含图标） */}
             <button
@@ -230,12 +261,24 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
           />
         ) : (
           <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-            <DiaryForm onSubmit={onSubmitForm} key={`${location}|${mood}|${startDate}|${endDate}`} />
+            <DiaryForm
+              onSubmit={onSubmitForm}
+              initial={diaryFormInitial}
+              onChange={(v) => {
+                setLocation(v.location);
+                setMood(v.mood);
+                setStartDate(v.startDate);
+                setEndDate(v.endDate);
+                setText(v.text);
+                setSaved(false);
+              }}
+              key={`${initial.id}`}
+            />
           </div>
         )}
       </section>
 
-      {/* 推荐歌单：默认展示已选择；进入编辑显示推荐 + 已选，可添加/移除 */}
+      {/* 推荐歌单：默认展示已选择；进入编辑仅显示已选（不再提供前端推荐逻辑） */}
       <section className="mt-10">
         <div className="mb-2">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">推荐歌单</h2>
@@ -248,62 +291,34 @@ export default function DiaryEditor({ initial }: { initial: Diary }) {
             <p className="text-sm text-zinc-500">还没有选择歌曲</p>
           )
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-              <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">根据心情「{mood}」推荐</h3>
-              {recs.length ? (
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {recs.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-zinc-900 dark:text-zinc-100">{t.title}</div>
-                        <div className="truncate text-zinc-500 dark:text-zinc-400">{t.artist}</div>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={selectedIds.has(t.id)}
-                        onClick={() => addTrack(t)}
-                        className={"rounded-full px-3 py-1 text-xs " + (selectedIds.has(t.id) ? "cursor-not-allowed bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400" : "bg-brand-700 text-white hover:bg-brand-800")}
-                      >
-                        {selectedIds.has(t.id) ? "已添加" : "添加"}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-zinc-500">暂无推荐</p>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-              <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">已选择歌单</h3>
-              {tracks.length ? (
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {tracks.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-zinc-900 dark:text-zinc-100">{t.title}</div>
-                        <div className="truncate text-zinc-500 dark:text-zinc-400">{t.artist}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeTrack(t.id)}
-                        className="rounded-full bg-zinc-200 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
-                      >
-                        移除
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-zinc-500">还没有选择歌曲</p>
-              )}
-            </div>
+          <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+            <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">已选择歌单</h3>
+            {tracks.length ? (
+              <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {tracks.map((t) => (
+                  <li key={t.id} className="flex items-center justify-between py-2 text-sm">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-zinc-900 dark:text-zinc-100">{t.title}</div>
+                      <div className="truncate text-zinc-500 dark:text-zinc-400">{t.artist}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeTrack(t.id)}
+                      className="rounded-full bg-zinc-200 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+                    >
+                      移除
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-500">还没有选择歌曲</p>
+            )}
           </div>
         )}
       </section>
 
-      {/* 保存提示与按钮：仅在发生修改后强调（不再显示“已保存”文字） */}
+      {/* 保存提示与按钮：仅在发生修改后强调 */}
       {!saved && (
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <button

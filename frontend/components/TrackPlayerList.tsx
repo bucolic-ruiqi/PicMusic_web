@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Track } from "@/lib/types";
 
 const SAMPLE_URLS = [
@@ -17,6 +17,30 @@ function urlForTrack(t: Track, idx: number) {
 export default function TrackPlayerList({ tracks }: { tracks: Track[] }) {
   const [current, setCurrent] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+
+  // 与全局播放器状态同步：当用户在全局条点击播放/暂停时，这里也更新图标状态
+  useEffect(() => {
+    const onState = (e: Event) => {
+      const ce = e as CustomEvent<{ trackId: string; playing: boolean }>;
+      const detail = ce.detail;
+      if (!detail) return;
+      if (current === detail.trackId) {
+        setPlaying(detail.playing);
+        return;
+      }
+      // 若全局播放的是本列表中的歌曲，则同步当前行与状态
+      const exists = tracks.some((t) => t.id === detail.trackId);
+      if (exists) {
+        setCurrent(detail.trackId);
+        setPlaying(detail.playing);
+      } else if (detail.playing) {
+        // 其他来源开始播放非本列表歌曲，取消本列表的播放高亮
+        setPlaying(false);
+      }
+    };
+    window.addEventListener("globalplayerstate" as any, onState as any);
+    return () => window.removeEventListener("globalplayerstate" as any, onState as any);
+  }, [current, tracks]);
 
   const handleToggle = (t: Track, idx: number) => {
     const url = urlForTrack(t, idx);
@@ -49,10 +73,10 @@ export default function TrackPlayerList({ tracks }: { tracks: Track[] }) {
               type="button"
               onClick={() => handleToggle(t, idx)}
               className={
-                "inline-flex h-8 w-8 items-center justify-center rounded-full " +
+                "inline-flex h-8 w-8 items-center justify-center rounded-full text-white " +
                 (current === t.id && playing
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-brand-700 text-white hover:bg-brand-800")
+                  ? "bg-brand-700 hover:bg-brand-800"
+                  : "bg-brand-700 hover:bg-brand-800")
               }
               aria-label={current === t.id && playing ? "暂停" : "播放"}
               title={current === t.id && playing ? "暂停" : "播放"}

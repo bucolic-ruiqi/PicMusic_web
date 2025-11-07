@@ -6,12 +6,14 @@ from typing import Dict, Any
 class Config:
     """基础配置类"""
     
-    # 数据库配置
-    DB_HOST = os.getenv('DB_HOST', '121.41.52.128')
+    # 数据库配置（注意：DB_HOST 不应包含端口；端口用 DB_PORT 传入）
+    DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
     DB_USER = os.getenv('DB_USER', 'root')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', 'Youxiuqingnianjiushiwo_0516')
-    DB_NAME = os.getenv('DB_NAME', 'songlist')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', 'root')
+    # 数据库名：与 schema.sql 中一致 -> mywebapp（表名为 tracks）
+    DB_NAME = os.getenv('DB_NAME', 'mywebapp')
     DB_PORT = int(os.getenv('DB_PORT', '3306'))
+    DB_CHARSET = os.getenv('DB_CHARSET', 'utf8mb4')
     
     # API配置
     API_HOST = os.getenv('API_HOST', '0.0.0.0')
@@ -28,13 +30,15 @@ class Config:
             "user": self.DB_USER,
             "password": self.DB_PASSWORD,
             "database": self.DB_NAME,
-            "port": self.DB_PORT
+            "port": self.DB_PORT,
+            "charset": self.DB_CHARSET,
+            "use_unicode": True,
         }
 
 class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
-    ALLOWED_ORIGINS = ['http://localhost:8100', 'http://localhost:3000','http://localhost:8101']
+    ALLOWED_ORIGINS = ['http://localhost:3000']
 
 class ProductionConfig(Config):
     """生产环境配置"""

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { DiaryFormValues, Mood } from "@/lib/types";
 
 const MOODS: { value: Mood; label: string }[] = [
@@ -19,17 +19,36 @@ const MOODS: { value: Mood; label: string }[] = [
 
 type Props = {
   onSubmit: (values: DiaryFormValues) => void;
+  // 初始值：用于编辑模式下从父组件传入原始内容
+  initial?: DiaryFormValues;
+  // 可选联动：当表单任一字段变化时回传给父组件（用于父组件“保存修改”按钮）
+  onChange?: (values: DiaryFormValues) => void;
 };
 
-export default function DiaryForm({ onSubmit }: Props) {
-  const [location, setLocation] = useState("");
-  const [mood, setMood] = useState<Mood>("快乐");
+export default function DiaryForm({ onSubmit, initial, onChange }: Props) {
   const today = new Date().toISOString().slice(0, 10);
-  const [startDate, setStartDate] = useState<string>(today);
-  const [endDate, setEndDate] = useState<string>(today);
-  const [text, setText] = useState("");
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [mood, setMood] = useState<Mood>(initial?.mood ?? "快乐");
+  const [startDate, setStartDate] = useState<string>(initial?.startDate ?? today);
+  const [endDate, setEndDate] = useState<string>(initial?.endDate ?? today);
+  const [text, setText] = useState(initial?.text ?? "");
   const [preview, setPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // 父组件初始值变化时同步（比如切换不同的日记或刷新数据）
+  // 注意：仅在 initial 变化时重置当前编辑中的内容
+  useEffect(() => {
+    if (!initial) return;
+    setLocation(initial.location);
+    setMood(initial.mood);
+    setStartDate(initial.startDate);
+    setEndDate(initial.endDate);
+    setText(initial.text);
+  }, [initial?.location, initial?.mood, initial?.startDate, initial?.endDate, initial?.text]);
+
+  const emitChange = (next: DiaryFormValues) => {
+    onChange?.(next);
+  };
 
   // 极简 Markdown 渲染：支持\n 换行、`行内代码`、**加粗**、*斜体*、[链接](url)
   function mdToHtml(src: string) {
@@ -95,7 +114,11 @@ export default function DiaryForm({ onSubmit }: Props) {
         type="text"
         placeholder="比如：杭州·西湖"
         value={location}
-        onChange={(e) => setLocation(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setLocation(v);
+          emitChange({ location: v, mood, startDate, endDate, text });
+        }}
         className="w-full rounded-lg border border-brand-200/60 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-brand-500/30 dark:border-brand-900/40"
       />
 
@@ -106,7 +129,10 @@ export default function DiaryForm({ onSubmit }: Props) {
           <button
             type="button"
             key={m.value}
-            onClick={() => setMood(m.value)}
+            onClick={() => {
+              setMood(m.value);
+              emitChange({ location, mood: m.value, startDate, endDate, text });
+            }}
             className={
               "rounded-full px-3 py-1 text-sm ring-1 transition " +
               (m.value === mood
@@ -127,7 +153,11 @@ export default function DiaryForm({ onSubmit }: Props) {
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setStartDate(v);
+              emitChange({ location, mood, startDate: v, endDate, text });
+            }}
             className="w-full rounded-lg border border-brand-200/60 bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-900/40"
           />
         </div>
@@ -136,7 +166,11 @@ export default function DiaryForm({ onSubmit }: Props) {
           <input
             type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setEndDate(v);
+              emitChange({ location, mood, startDate, endDate: v, text });
+            }}
             className="w-full rounded-lg border border-brand-200/60 bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-900/40"
           />
         </div>
@@ -179,7 +213,11 @@ export default function DiaryForm({ onSubmit }: Props) {
           rows={6}
           placeholder="支持 Markdown：# H1、## H2、### H3、**加粗**、*斜体*、`代码`、[链接](https://example.com)"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setText(v);
+            emitChange({ location, mood, startDate, endDate, text: v });
+          }}
           className="w-full rounded-lg border border-brand-200/60 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-brand-500/30 dark:border-brand-900/40"
         />
         </>

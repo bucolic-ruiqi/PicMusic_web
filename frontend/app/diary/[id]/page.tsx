@@ -5,6 +5,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 import DiaryEditor from "@/components/DiaryEditor";
 import { getDiaryById, getDiaries } from "@/lib/diaryRepo";
+import { CURRENT_USER_ID } from "@/lib/config";
 
 function fmtRange(d: Diary) {
   const end = new Date(d.endDate ?? d.date);
@@ -18,18 +19,20 @@ function fmtRange(d: Diary) {
   return `${s} – ${e}`;
 }
 
-export default async function DiaryDetail({ params }: { params: { id?: string } }) {
-  const idRaw = params?.id ?? "";
+export default async function DiaryDetail(props: { params: Promise<{ id?: string }> }) {
+  const { id: idMaybe } = await props.params;
+  const idRaw = idMaybe ?? "";
   let id: string;
   try {
     id = decodeURIComponent(idRaw);
   } catch {
     id = String(idRaw ?? "");
   }
-  let diary = await getDiaryById(Number(id), 1);
+  const idNum = Number(id);
+  let diary = Number.isFinite(idNum) ? await getDiaryById(idNum, CURRENT_USER_ID) : null;
   // 兜底：若找不到，允许使用首条数据，避免 404 打断体验
   if (!diary) {
-    const list = await getDiaries(1);
+    const list = await getDiaries(CURRENT_USER_ID);
     diary = list[0] as any;
   }
 

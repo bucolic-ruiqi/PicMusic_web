@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDiary, getDiaries } from "@/lib/diaryRepo";
+import { createDiary, getDiaries, getDiaryById } from "@/lib/diaryRepo";
 
 // GET /api/diaries
 export async function GET() {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   if (!date) return NextResponse.json({ error: "date required" }, { status: 400 });
 
-  await createDiary(1, {
+  const res = await createDiary(1, {
     diary_datetime: new Date(date).toISOString().slice(0, 19).replace("T", " "),
     trip_start: startDate ? new Date(startDate).toISOString().slice(0, 19).replace("T", " ") : null,
     trip_end: endDate ? new Date(endDate).toISOString().slice(0, 19).replace("T", " ") : null,
@@ -35,7 +35,12 @@ export async function POST(req: NextRequest) {
     track_ids_json: JSON.stringify(trackIds || []),
     is_favorite: !!isFavorite,
   });
-
+  const insertId = (res as any)?.insertId;
+  if (Number.isFinite(insertId)) {
+    const row = await getDiaryById(Number(insertId), 1);
+    if (row) return NextResponse.json(row, { status: 201 });
+  }
+  // 回退：返回最新列表
   const list = await getDiaries(1);
   return NextResponse.json(list, { status: 201 });
 }

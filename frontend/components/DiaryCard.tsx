@@ -2,6 +2,7 @@
 
 import type { Diary } from "@/lib/types";
 import Link from "next/link";
+import { buildDiaryHref } from "@/lib/config";
 
 type Props = {
   diary: Diary;
@@ -40,7 +41,7 @@ export default function DiaryCard({ diary, onClick }: Props) {
           </p>
         </div>
 
-        {/* Images - compact row at bottom */}
+  {/* Images - compact row at bottom */}
         <div className="mb-2 flex gap-1.5">
           {images.length === 0 ? (
             <div className="flex h-14 w-full items-center justify-center rounded-[6px] bg-zinc-100 text-[10px] text-zinc-400 dark:bg-zinc-800">
@@ -58,6 +59,8 @@ export default function DiaryCard({ diary, onClick }: Props) {
             ))
           )}
         </div>
+
+        {/* 首页不展示歌曲列表，保持卡片简洁 */}
 
         {/* Footer: date range only */}
         {/* Footer: date range + 详情提示 */}
@@ -84,7 +87,7 @@ export default function DiaryCard({ diary, onClick }: Props) {
   }
 
   return (
-    <Link href={`/diary/${diary.id}`} className="group block">
+    <Link href={buildDiaryHref(diary.id)} className="group block">
       {CardInner}
     </Link>
   );

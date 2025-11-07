@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildDiaryHref } from "@/lib/config";
 
 export default function Header({ hideAvatar = false, noSpacer = false }: { hideAvatar?: boolean; noSpacer?: boolean }) {
   const router = useRouter();
@@ -11,6 +12,11 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [results, setResults] = useState<Array<{ id: string; location: string; date: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const [searchWidthReady, setSearchWidthReady] = useState(false);
+  const [enterReady, setEnterReady] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
@@ -58,21 +64,64 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
 
   const openSearch = useCallback(() => {
     setSearchOpen(true);
-    // 稍后聚焦，等待宽度动画展开
-    setTimeout(() => searchInputRef.current?.focus(), 120);
+    setSearchWidthReady(false);
+    setEnterReady(false);
+    // 先触发宽度从右向左展开，再在下一帧启动内容淡入/滑入
+    setTimeout(() => {
+      setSearchWidthReady(true);
+      requestAnimationFrame(() => setEnterReady(true));
+      // 稍后聚焦，等待宽度动画展开一部分
+      setTimeout(() => searchInputRef.current?.focus(), 120);
+    }, 10);
   }, []);
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
     setQuery("");
+    setResults([]);
+    setSearchWidthReady(false);
+    setEnterReady(false);
   }, []);
 
-  const submitSearch = useCallback(() => {
+  // 实时搜索（地点）
+  useEffect(() => {
     const q = query.trim();
-    if (!q) return closeSearch();
-    router.push(`/explore?q=${encodeURIComponent(q)}`);
-    closeSearch();
-  }, [query, router, closeSearch]);
+    if (!searchOpen) return; // 仅在展开时搜索
+    if (!q) {
+      setResults([]);
+      abortRef.current?.abort();
+      abortRef.current = null;
+      return;
+    }
+    setLoading(true);
+    const ac = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = ac;
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/diaries/search?q=${encodeURIComponent(q)}&limit=8`, {
+          signal: ac.signal,
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = (await res.json()) as Array<{ id: string; location: string; date: string }>;
+        setResults(data);
+      } catch (e) {
+        if ((e as any)?.name !== "AbortError") console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }, 200); // 防抖
+    return () => {
+      clearTimeout(t);
+      ac.abort();
+    };
+  }, [query, searchOpen]);
+
+  const goToDiary = useCallback((id: string) => {
+    router.push(buildDiaryHref(id));
+    setSearchOpen(false);
+  }, [router]);
 
   return (
     <>
@@ -96,7 +145,7 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
             <div className="relative">
               <button
                 type="button"
-                onClick={() => (searchOpen ? submitSearch() : openSearch())}
+                onClick={() => (searchOpen ? setSearchOpen(false) : openSearch())}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 aria-label="搜索"
                 title="搜索"
@@ -107,22 +156,48 @@ export default function Header({ hideAvatar = false, noSpacer = false }: { hideA
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </button>
-              <div
-                className="pointer-events-none absolute right-full top-1/2 -translate-y-1/2 overflow-hidden transition-[width] duration-200 ease-out z-[60]"
-                style={{ width: searchOpen ? "min(200px, calc(100vw - 120px))" : 0 }}
-              >
-                <input
-                  ref={searchInputRef}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submitSearch();
-                    if (e.key === "Escape") closeSearch();
-                  }}
-                  placeholder="搜索地点 / 心情 / 文字"
-                  className="pointer-events-auto h-8 w-full rounded-full bg-zinc-100/80 px-3 text-sm text-zinc-700 outline-none placeholder:text-zinc-400 shadow-sm backdrop-blur dark:bg-zinc-800/70 dark:text-zinc-200 focus:outline-none focus:ring-0"
-                />
-              </div>
+              {searchOpen && (
+                <div
+                  className="pointer-events-none absolute right-full top-1/2 -translate-y-1/2 overflow-visible z-[60] transition-[width] duration-300 ease-out"
+                  style={{ width: searchWidthReady ? "min(280px, calc(100vw - 120px))" : 0 }}
+                >
+                  <div className={`relative transform-gpu transition-all duration-300 ease-out ${enterReady ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"}`}>
+                    <input
+                      ref={searchInputRef}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") closeSearch();
+                      }}
+                      placeholder="搜索旅行足迹"
+                      className="pointer-events-auto h-8 w-full rounded-full bg-zinc-100/80 px-3 text-sm text-zinc-700 outline-none placeholder:text-zinc-400 shadow-sm backdrop-blur dark:bg-zinc-800/70 dark:text-zinc-200 focus:outline-none focus:ring-0"
+                    />
+                    {(query.trim().length > 0 || loading) && (
+                      <div className="pointer-events-auto absolute left-0 right-0 mt-2 max-h-80 overflow-auto rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                        {loading && (
+                          <div className="px-3 py-2 text-xs text-zinc-500">搜索中…</div>
+                        )}
+                        {!loading && results.length === 0 && (
+                          <div className="px-3 py-2 text-xs text-zinc-500">无匹配结果</div>
+                        )}
+                        {!loading && results.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={() => goToDiary(r.id)}
+                            className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm text-zinc-800 dark:text-zinc-100">{r.location}</div>
+                              <div className="text-[11px] text-zinc-500">{new Date(r.date).toLocaleDateString()}</div>
+                            </div>
+                            <span className="text-[10px] text-brand-700 dark:text-brand-400">查看</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 深色模式切换 */}

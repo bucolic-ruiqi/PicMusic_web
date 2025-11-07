@@ -1,5 +1,6 @@
 import { getPool } from "@/lib/db";
 import type { Diary } from "@/lib/types";
+import { getTracksMapByIds } from "@/lib/tracksRepo";
 
 function toISO(dt: any | null): string | undefined {
   if (!dt) return undefined;
@@ -21,6 +22,11 @@ function ensureArray(v: any): string[] {
   } catch {
     return [];
   }
+}
+
+function parseIdArrayAsStrings(v: any): string[] {
+  const arr = ensureArray(v) as any[];
+  return arr.map((x) => String(x)).filter((s) => !!s);
 }
 
 export function rowToDiary(row: any): Diary & { isFavorite?: boolean } {
@@ -48,7 +54,27 @@ export async function getDiaries(userId = 1): Promise<(Diary & { isFavorite?: bo
       ORDER BY diary_datetime DESC, id DESC`,
     [userId]
   );
-  return (rows as any[]).map(rowToDiary);
+  const list = (rows as any[]);
+  // 批量收集所有 track id 并一次查询，避免 N+1
+  const allIds: number[] = [];
+  for (const r of list) {
+    const ids = parseIdArrayAsStrings(r.track_ids_json);
+    (allIds as any).push(...ids);
+  }
+  const idSet = Array.from(new Set(allIds as any as string[]));
+  const trackMap = await getTracksMapByIds(idSet);
+
+  return list.map((r) => {
+    const d = rowToDiary(r);
+    const ids = parseIdArrayAsStrings(r.track_ids_json);
+    if (ids.length) {
+      const tracks = ids
+        .map((id) => trackMap.get(String(id)))
+        .filter(Boolean) as any[];
+      (d as any).tracks = tracks;
+    }
+    return d;
+  });
 }
 
 export async function getDiaryById(id: number, userId = 1): Promise<(Diary & { isFavorite?: boolean }) | null> {
@@ -62,7 +88,15 @@ export async function getDiaryById(id: number, userId = 1): Promise<(Diary & { i
     [id, userId]
   );
   const r = (rows as any[])[0];
-  return r ? rowToDiary(r) : null;
+  if (!r) return null;
+  const d = rowToDiary(r);
+  const ids = parseIdArrayAsStrings(r.track_ids_json);
+  if (ids.length) {
+    const trackMap = await getTracksMapByIds(ids);
+    const tracks = ids.map((tid) => trackMap.get(String(tid))).filter(Boolean) as any[];
+    (d as any).tracks = tracks;
+  }
+  return d;
 }
 
 export async function updateDiary(
@@ -132,4 +166,26 @@ export async function createDiary(userId: number, data: {
     ]
   );
   return res as any;
+}
+
+export async function searchDiariesByLocation(
+  q: string,
+  userId = 1,
+  limit = 10
+): Promise<Pick<Diary, "id" | "location" | "date">[]> {
+  const pool = getPool();
+  const like = `%${q}%`;
+  const [rows] = await pool.query(
+    `SELECT id, diary_datetime, location
+       FROM diaries
+      WHERE user_id = ? AND location LIKE ?
+      ORDER BY diary_datetime DESC, id DESC
+      LIMIT ?`,
+    [userId, like, Math.max(1, Math.min(50, Number(limit) || 10))]
+  );
+  return (rows as any[]).map((r) => ({
+    id: String(r.id),
+    location: r.location ?? "",
+    date: toISO(r.diary_datetime) || new Date().toISOString(),
+  }));
 }

@@ -3,9 +3,10 @@ import Timeline from "@/components/Timeline";
 import FeaturedCarouselClient from "@/components/FeaturedCarouselClient";
 import MetricsBar from "@/components/MetricsBar";
 import { getDiaries } from "@/lib/diaryRepo";
+import { CURRENT_USER_ID } from "@/lib/config";
 
 export default async function Home() {
-  const diaries = await getDiaries(1);
+  const diaries = await getDiaries(CURRENT_USER_ID);
   return (
     <div>
       <Header noSpacer />

@@ -14,7 +14,7 @@ function extractDiaryId(next: string | null): string | null {
 export default function RecommendSelectPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/diary/1";
+  const next = params.get("next") || "/";
   const diaryId = extractDiaryId(next);
 
   const [diary, setDiary] = useState<Diary | null>(null);
@@ -49,22 +49,28 @@ export default function RecommendSelectPage() {
     };
   }, [diaryId]);
 
-  // 基于 mood 拉取推荐歌曲
+  // 从 loading 阶段缓存的推荐结果读取数据
   useEffect(() => {
-    let aborted = false;
-    async function loadTracks() {
-      try {
-        const mood = diary?.mood || "放松";
-        const res = await fetch(`/api/tracks/recommend?mood=${encodeURIComponent(mood)}&limit=10`, { cache: "no-store" });
-        const json = await res.json();
-        if (!aborted && Array.isArray(json)) setTracks(json as Track[]);
-      } catch {}
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("newDiary:recommendItems") : null;
+      if (raw) {
+        const items = JSON.parse(raw) as Array<{ id: string | number; name: string; artist: string }>;
+        const mapped: Track[] = (Array.isArray(items) ? items : []).map((it) => ({
+          id: String((it as any).id ?? ""),
+          title: it.name,
+          artist: it.artist,
+          duration: 180,
+        })).filter((t) => /^\d+$/.test(t.id));
+        setTracks(mapped);
+        // 默认全选，避免用户忘记选择导致不写入
+        setSelected(new Set(mapped.map((t) => t.id)));
+      } else {
+        setTracks([]);
+      }
+    } catch {
+      setTracks([]);
     }
-    loadTracks();
-    return () => {
-      aborted = true;
-    };
-  }, [diary?.mood]);
+  }, []);
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [current, setCurrent] = useState<string | null>(null);
@@ -105,17 +111,25 @@ export default function RecommendSelectPage() {
       const key = `selectedTracks:${diary?.id ?? "unknown"}`;
       const chosen = tracks.filter((t) => selected.has(t.id));
       localStorage.setItem(key, JSON.stringify(chosen));
+      // 清理临时图片数据
+      localStorage.removeItem("newDiary:imageDataUrl");
+      localStorage.removeItem("newDiary:recommendItems");
     } catch {}
     // 将所选歌曲写回当前日记（track_ids_json）
     (async () => {
       try {
         if (diary?.id) {
-          const ids = tracks.filter((t) => selected.has(t.id)).map((t) => t.id);
-          await fetch(`/api/diaries/${encodeURIComponent(diary.id)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ trackIds: ids }),
-          });
+          const ids = tracks
+            .filter((t) => selected.has(t.id))
+            .map((t) => t.id)
+            .filter((s) => /^\d+$/.test(s));
+          if (ids.length) {
+            await fetch(`/api/diaries/${encodeURIComponent(diary.id)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ trackIds: ids }),
+            });
+          }
         }
       } catch {}
     })();
@@ -152,8 +166,8 @@ export default function RecommendSelectPage() {
                     type="button"
                     onClick={() => handleTogglePlay(t, idx)}
                     className={
-                      "inline-flex h-8 w-8 items-center justify-center rounded-full " +
-                      (isPlaying ? "bg-red-600 text-white hover:bg-red-700" : "bg-brand-700 text-white hover:bg-brand-800")
+                      "inline-flex h-8 w-8 items-center justify-center rounded-full text-white " +
+                      (isPlaying ? "bg-brand-700 hover:bg-brand-800" : "bg-brand-700 hover:bg-brand-800")
                     }
                     aria-label={isPlaying ? "暂停" : "播放"}
                     title={isPlaying ? "暂停" : "播放"}
