@@ -13,9 +13,18 @@ function fmtRangeISO(start?: string, end?: string, fallback?: string) {
   const endDate = end ? new Date(end) : fallback ? new Date(fallback) : new Date();
   const startDate = start ? new Date(start) : new Date(endDate.getTime() - 2 * 24 * 3600 * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
-  if (startDate.getFullYear() === endDate.getFullYear()) {
-    return `${endDate.getFullYear()}.${endDate.getMonth() + 1}.${pad(endDate.getDate())} – ${endDate.getMonth() + 1}.${pad(endDate.getDate())}`;
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
+
+  if (sameYear && sameMonth) {
+    // 同年同月：2025.10.15 – 18
+    return `${endDate.getFullYear()}.${endDate.getMonth() + 1}.${pad(startDate.getDate())} – ${pad(endDate.getDate())}`;
   }
+  if (sameYear) {
+    // 同年不同月：2025.10.15 – 11.02
+    return `${endDate.getFullYear()}.${startDate.getMonth() + 1}.${pad(startDate.getDate())} – ${endDate.getMonth() + 1}.${pad(endDate.getDate())}`;
+  }
+  // 不同年：2024.12.31 – 2025.01.02
   return `${startDate.getFullYear()}.${startDate.getMonth() + 1}.${pad(startDate.getDate())} – ${endDate.getFullYear()}.${endDate.getMonth() + 1}.${pad(endDate.getDate())}`;
 }
 

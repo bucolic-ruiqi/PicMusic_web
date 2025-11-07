@@ -217,7 +217,7 @@ export default function ProfileClient({ initial }: { initial: { userId: number; 
         {/* MBTI 选择 */}
         <div>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">MBTI 性格类型</h2>
-          <p className="mt-1 text-xs text-zinc-500">选择一种</p>
+          <p className="mt-1 text-xs text-zinc-500">请选择您的MBTI, 适配个性化推荐</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {mbtiTypes.map((t) => {
               const selected = t === mbti;
@@ -242,7 +242,7 @@ export default function ProfileClient({ initial }: { initial: { userId: number; 
         {/* 音乐风格多选 */}
         <div>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">音乐风格</h2>
-          <p className="mt-1 text-xs text-zinc-500">最多 5 个</p>
+          <p className="mt-1 text-xs text-zinc-500">选择您的音乐风格偏好, 获得您的最爱歌曲</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {musicGenresAll.map((g) => {
               const selected = selectedGenres.includes(g);
