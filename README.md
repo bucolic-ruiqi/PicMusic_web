@@ -1,6 +1,9 @@
 <div align="center">
 
-  <h1>PicMusic</h1>
+  <h1>
+    <img src="frontend/public/logo.png" alt="PicMusic Logo" height="28" style="vertical-align: middle; margin-right: 8px;" />
+    PicMusic
+  </h1>
   <p>音乐旅行日记 · 以一张旅途照片，生成你的专属配乐</p>
 
   <a href="#"><img alt="Version" src="https://img.shields.io/badge/version-v0.1.0-blue"></a>

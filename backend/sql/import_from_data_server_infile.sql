@@ -1,25 +1,21 @@
--- Server-side CSV import (NO LOCAL) using secure_file_priv directory
--- Use this when you cannot enable LOCAL INFILE on the server.
--- Steps:
--- 1) Find secure_file_priv directory:
---    SELECT @@secure_file_priv;
--- 2) Copy CSV files into that directory (example: /var/lib/mysql-files/):
---    cp /Users/ruiqi/mywebapp/backend/data/users.csv /var/lib/mysql-files/
---    cp /Users/ruiqi/mywebapp/backend/data/tracks.csv /var/lib/mysql-files/
---    cp /Users/ruiqi/mywebapp/backend/data/diaries.csv /var/lib/mysql-files/
--- 3) Adjust the file paths below to your secure_file_priv actual value.
--- 4) Run: mysql -u root -p < backend/sql/import_from_data_server_infile.sql
+-- 服务端导入（NO LOCAL），使用 secure_file_priv 目录
+-- 适用于无法开启 LOCAL INFILE 的场景
+-- 步骤：
+-- 1) 查看目录：SELECT @@secure_file_priv;
+-- 2) 将 CSV 复制到该目录（如 /var/lib/mysql-files/）
+-- 3) 修改下方路径 @dir 为实际目录
+-- 4) 运行：mysql -u root -p < backend/sql/import_from_data_server_infile.sql
 
 USE mywebapp;
 
--- Optional clean
+-- 可选清理
 -- SET FOREIGN_KEY_CHECKS=0;
 -- TRUNCATE TABLE diaries;
 -- TRUNCATE TABLE tracks;
 -- TRUNCATE TABLE users;
 -- SET FOREIGN_KEY_CHECKS=1;
 
--- Replace this path with the result of SELECT @@secure_file_priv;
+-- 将此路径替换为上一步查询结果
 SET @dir = '/var/lib/mysql-files/';
 
 -- users.csv
@@ -36,7 +32,7 @@ SET
   password_hash = NULLIF(@password_hash,''),
   created_at = NULLIF(@created_at,'');
 
--- tracks.csv (note headers ID/BPM)
+-- tracks.csv（注意 ID/BPM 表头）
 LOAD DATA INFILE CONCAT(@dir, 'tracks.csv')
 INTO TABLE tracks
 CHARACTER SET utf8mb4
@@ -57,7 +53,7 @@ SET
   emotion_json = NULLIF(@emotion_json,''),
   dominant_emotion = NULLIF(@dominant_emotion,'');
 
--- diaries.csv (frontend-aligned headers)
+-- diaries.csv（与前端示例一致表头）
 LOAD DATA INFILE CONCAT(@dir, 'diaries.csv')
 INTO TABLE diaries
 CHARACTER SET utf8mb4

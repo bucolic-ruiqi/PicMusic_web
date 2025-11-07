@@ -9,17 +9,7 @@ from typing import Dict, Any, List
 from config import get_config
 
 def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], top_k: int) -> list:
-    """
-    根据输入的情绪分布 JSON 和数据库配置，推荐 top_k 首最匹配的歌曲
-
-    参数：
-        emotion_json: dict，包含6个情绪值 + dominant_emotion
-        db_config: dict，数据库连接配置
-        top_k: int，返回前 top_k 首匹配的歌曲
-
-    返回：
-        list[dict]，每个 dict 包含 id、name、artist
-    """
+    """基于情绪向量检索 Top‑K 歌曲（返回 id/name/artist）"""
 
     input_vector = np.array([
         emotion_json["emotion_scores"]["happy"],
@@ -36,7 +26,7 @@ def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], to
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
 
-    # 表名与 schema.sql 对齐：tracks
+    # 与 schema.sql 对齐：tracks 表
     query = (
         "SELECT id, name, artist, emotion_json "
         "FROM tracks "
@@ -51,7 +41,7 @@ def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], to
         conn.close()
         return []
 
-    # 计算相似度并排序（限制底层 BLAS 线程，避免 macOS 崩溃）
+    # 计算相似度并排序（限制 BLAS 线程，规避 macOS 崩溃）
     scored_songs = []
     with threadpool_limits(limits=1):
         for row in results:
@@ -74,7 +64,7 @@ def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], to
                     "similarity": sim
                 })
             except Exception:
-                continue  # 忽略格式错误的数据行
+                continue  # 忽略异常行
 
     # 排序取前 top_k 首，去掉 similarity 字段
     scored_songs.sort(key=lambda x: x["similarity"], reverse=True)
@@ -87,13 +77,9 @@ def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], to
 
 
 def main():
-    """命令行测试入口：
-    方式一：基于图片自动分析情绪后推荐
-      python recommend_songs.py --image <path_or_url> --top-k 10
-
-    方式二：直接给定情绪 JSON（字符串或文件路径）
-      python recommend_songs.py --emotion-json '{"emotion_scores": {...}, "dominant_emotion": "happy"}'
-      python recommend_songs.py --emotion-json-file emotion.json
+    """命令行测试：
+    - 自动分析：python recommend_songs.py --image <path_or_url> --top-k 10
+    - 直接提供情绪：--emotion-json '{...}' 或 --emotion-json-file file.json
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", help="图片路径/URL；如提供，则先通过 CLIP 计算情绪")

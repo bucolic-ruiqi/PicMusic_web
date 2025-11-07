@@ -1,5 +1,5 @@
 import os
-# 限制底层数学库线程，避免 macOS/Accelerate 在多线程下的崩溃
+# 限制数学库线程数，避免 macOS/Accelerate 多线程崩溃
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
@@ -16,13 +16,13 @@ from recommend_songs import recommend_songs_by_emotion
 from config import get_config
 import logging
 
-# 获取配置
+# 加载配置
 config = get_config()
 
 app = FastAPI(title="Image-to-Music Recommendation API")
 logger = logging.getLogger("uvicorn.error")
 _RECOMMEND_LOCK = threading.Lock()
-# 进程启动时预热模型，避免首次并发请求竞争加载
+# 启动预热模型，降低首请求时延
 @app.on_event("startup")
 def _warmup():
     try:
@@ -33,7 +33,7 @@ def _warmup():
         logger.exception("[startup] warmup failed")
 
 
-# 配置CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS,
@@ -56,25 +56,25 @@ class SongInfo(BaseModel):
     name: str
     artist: str
 
-# 📌 唯一公开接口：推荐歌曲
+# 唯一公开接口：推荐歌曲
 @app.post("/recommend", response_model=List[SongInfo])
 def recommend_songs(req: RecommendRequest):
     try:
         with _RECOMMEND_LOCK:
             logger.info("[recommend] start image analyze")
-            # 1. 图像情绪分析
+            # 图像情绪分析
             emotion_result = analyze_image_emotion(req.image_url)
             logger.info("[recommend] emotion result: %s", emotion_result.get("dominant_emotion"))
 
-            # 2. 推荐歌曲
+            # 推荐歌曲
             recommended = recommend_songs_by_emotion(emotion_result, db_config, top_k=req.top_k)
             logger.info("[recommend] recommended %d items", len(recommended))
             return recommended
 
     except Exception as e:
         logger.exception("/recommend failed: %s", e)
-        # 返回空列表，避免前端写入非法 id
+        # 出错时返回空列表，避免前端写入非法 id
         return []
 
 
-# uvicorn main:app --host 0.0.0.0 --port 8000
+# 运行：uvicorn main:app --host 0.0.0.0 --port 8000

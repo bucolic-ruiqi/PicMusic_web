@@ -1,5 +1,5 @@
--- MyWebApp minimal 3-table schema (MySQL 8+)
--- Encoding: utf8mb4 for full Unicode support
+-- 三表最小示例（MySQL 8+）
+-- 字符集：utf8mb4（完整 Unicode）
 
 CREATE DATABASE IF NOT EXISTS mywebapp
   DEFAULT CHARACTER SET utf8mb4
@@ -7,7 +7,7 @@ CREATE DATABASE IF NOT EXISTS mywebapp
 
 USE mywebapp;
 
--- 1) users
+-- 1) users 表
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   username VARCHAR(50) NOT NULL UNIQUE,
@@ -17,9 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Aligned with backend/database/*.csv headers for downstream model analysis
--- Columns: ID,name,artist,style,language,BPM,instrument,lyrics,label,emotion_json,dominant_emotion
--- Note: ID in dataset can exceed 32-bit range -> use BIGINT UNSIGNED; no AUTO_INCREMENT since IDs come from CSV
+-- 与数据集字段对齐：ID,name,artist,style,language,BPM,instrument,lyrics,label,emotion_json,dominant_emotion
+-- 说明：ID 可能超 32 位，使用 BIGINT；ID 来自 CSV，无 AUTO_INCREMENT
 CREATE TABLE IF NOT EXISTS tracks (
   id BIGINT UNSIGNED NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -37,9 +36,8 @@ CREATE TABLE IF NOT EXISTS tracks (
   INDEX idx_tracks_name_artist (name, artist)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3) diaries
--- For assignment simplicity, store multiple songs as a JSON array of track IDs in track_ids_json.
--- If you only need ONE song per diary, replace track_ids_json with track_id INT UNSIGNED and add a FK to tracks(id).
+-- 3) diaries 表
+-- 简化：多首歌以 track_ids_json(JSON) 存储；仅需单曲可改为 track_id + 外键
 CREATE TABLE IF NOT EXISTS diaries (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id INT UNSIGNED NOT NULL,

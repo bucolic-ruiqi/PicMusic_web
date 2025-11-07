@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
 import { getUserById } from "@/lib/userRepo";
 import { CURRENT_USER_ID } from "@/lib/config";
-import ProfileClient from "@/components/ProfileClient";
+import ProfileClient from "../../components/ProfileClient";
 
 export default async function ProfilePage() {
   const user = await getUserById(CURRENT_USER_ID);

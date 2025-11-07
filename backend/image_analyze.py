@@ -8,17 +8,14 @@ import threading
 from transformers import CLIPProcessor, CLIPModel
 import time
 
-# 音乐情绪标签
+# 情绪标签（与曲库一致）
 MUSIC_EMOTION_LABELS = [
     "happy", "sad", "calm", "romantic", "dark", "aggressive"
 ]
 
 class ImageEmotionAnalyzer:
     def __init__(self, model_id: str | None = None, device: str | None = None):
-        """
-        在线加载 Hugging Face 的 CLIP 模型（默认：openai/clip-vit-base-patch32）。
-        可通过环境变量 CLIP_MODEL_ID 覆盖。
-        """
+        """加载 CLIP 模型（默认 openai/clip-vit-base-patch32，可用 CLIP_MODEL_ID 覆盖）"""
         model_id = model_id or os.getenv("CLIP_MODEL_ID", "openai/clip-vit-base-patch32")
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         print(f"加载 CLIP 模型: {model_id} (device={self.device}) ...")
@@ -30,7 +27,7 @@ class ImageEmotionAnalyzer:
 
     def analyze(self, image_input):
         t0 = time.time()
-        # 判断输入是 URL、base64 数据还是本地文件路径
+        # 支持 http(s)、dataURL(base64)、本地文件
         if image_input.startswith("http"):
             response = requests.get(image_input)
             image = Image.open(io.BytesIO(response.content)).convert("RGB")
@@ -43,7 +40,7 @@ class ImageEmotionAnalyzer:
         else:
             image = Image.open(image_input).convert("RGB")
 
-        # 使用 CLIP 对图像与情绪标签进行匹配
+        # 计算图像对情绪标签的匹配分数
         inputs = self.processor(
             text=MUSIC_EMOTION_LABELS,
             images=image,
@@ -51,7 +48,7 @@ class ImageEmotionAnalyzer:
             padding=True
         )
 
-        # 移动到相同设备
+        # 输入迁移到目标设备
         inputs = {k: v.to(self.device) if hasattr(v, 'to') else v for k, v in inputs.items()}
 
         with torch.no_grad():
@@ -71,7 +68,7 @@ class ImageEmotionAnalyzer:
             "dominant_emotion": dominant_emotion
         }
 
-# 简单的进程级单例，避免每次请求重复加载大模型
+# 进程级单例，避免重复加载模型
 _ANALYZER_SINGLETON: ImageEmotionAnalyzer | None = None
 _ANALYZER_LOCK = threading.Lock()
 
@@ -83,17 +80,14 @@ def get_analyzer() -> ImageEmotionAnalyzer:
                 _ANALYZER_SINGLETON = ImageEmotionAnalyzer()
     return _ANALYZER_SINGLETON
 
-# 集成为 API，只保留这个入口函数
+# API 入口
 def analyze_image_emotion(image_path_or_url):
     analyzer = get_analyzer()
     return analyzer.analyze(image_path_or_url)
 
 
 def main():
-    """简单命令行测试：
-    python image_analyze.py --image <path_or_url>
-    可选：--model-id openai/clip-vit-large-patch14
-    """
+    """命令行测试：python image_analyze.py --image <path_or_url> [--model-id ...]"""
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", required=True, help="图片本地路径或 URL 或 data:image/base64")

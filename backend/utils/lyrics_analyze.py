@@ -11,7 +11,7 @@ client = OpenAI(
 
 CSV_PATH = '../database/id_name_lyrics.csv'
 
-# 直接用6类情绪标签
+# 六类情绪标签
 emotion_labels = ["happy", "sad", "calm", "romantic", "dark", "aggressive"]
 
 def generate_prompt(lyrics):
@@ -25,7 +25,7 @@ def generate_prompt(lyrics):
 歌词如下：
 \"\"\"{lyrics}\"\"\"
 
-请直接输出格式如下的 JSON（不要解释）：
+请直接输出如下 JSON（不要解释）：
 {{
   "happy": 0.2,
   "sad": 0.5,
@@ -54,7 +54,7 @@ def get_emotion_distribution(lyrics, retries=3):
             dominant = max(normalized, key=normalized.get) if total > 0 else "unknown"
             return normalized, dominant
         except Exception as e:
-            print(f"[重试中] GPT调用失败：{e}")
+            print(f"[重试] GPT 调用失败：{e}")
             time.sleep(2)
 
     return {label: 0.0 for label in emotion_labels}, "unknown"
@@ -74,4 +74,4 @@ for idx, row in tqdm(df.iterrows(), total=len(df)):
 
 df.to_csv(CSV_PATH, index=False, encoding='utf-8-sig')
 
-print(f"\n 任务完成！6类情绪已写入 emotion_json，主导情绪写入 dominant_emotion，文件覆盖保存：{CSV_PATH}")
+print(f"\n完成：已写入 emotion_json（六类情绪）与 dominant_emotion → {CSV_PATH}")
