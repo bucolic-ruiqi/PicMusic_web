@@ -1,10 +1,10 @@
 <div align="center">
 
   <h1>
-    <img src="frontend/public/logo.png" alt="PicMusic Logo" height="28" style="vertical-align: middle; margin-right: 8px;" />
-    PicMusic
+    <img src="frontend/public/logo.png" alt="PicMusic Logo" height="48" style="vertical-align: middle; margin-right: 8px;" />
+    PicMusic - Web Ver.
   </h1>
-  <p>音乐旅行日记 · 以一张旅途照片，生成你的专属配乐</p>
+  <p>音乐旅行日记 · 多模态旅行记忆管理 · 基于图像情绪的个性化音乐推荐</p>
 
   <a href="#"><img alt="Version" src="https://img.shields.io/badge/version-v0.1.0-blue"></a>
   <img alt="Frontend" src="https://img.shields.io/badge/Frontend-Next.js_16_%2B_Tailwind_4-06b6d4">
@@ -15,32 +15,13 @@
 
 </div>
 
-<div align="center">
 
-<strong>⭐ If this project helps you, please give it a Star! ⭐</strong>
+以一张旅途照片，获得你的个性化音乐推荐。PicMusic 将“图像情绪理解 + 歌曲情绪检索”融入旅行日记：你上传照片，后端用 CLIP 推断情绪分布，匹配曲库里最合适的歌；前端提供沉浸式的时间线、编辑器与全局迷你播放器，帮助你沉淀一段段“有声的回忆”。
 
-</div>
+- 前端：Next.js App Router + React
+- 后端：FastAPI + CLIP
+- 数据库：MySQL 8（users/tracks/diaries 三表）
 
-## PicMusic · 音乐旅行日记（Image-to-Music Diary）
-
-以一张旅途照片，开启一段专属配乐。PicMusic 将“图像情绪理解 + 歌曲情绪检索”融入旅行日记：你上传照片，后端用 CLIP 推断情绪分布，匹配曲库里最合适的歌；前端提供沉浸式的时间线、编辑器与全局迷你播放器，帮助你沉淀一段段“有声的回忆”。
-
-- 前端：Next.js App Router + Tailwind v4（暗黑模式、全局悬浮播放条）
-- 后端：FastAPI（/recommend）+ Hugging Face CLIP（图像→情绪）
-- 数据库：MySQL 8（users/tracks/diaries 三表，含 CSV 一键导入脚本）
-
-
-## 目录
-- 核心功能与亮点
-- 架构与数据流
-- 快速开始（本地运行）
-- 数据库初始化与导入
-- 开发者指南（目录结构、关键代码）
-- API 说明与示例
-- 设计与实现要点（论文式概览）
-- 常见问题（FAQ）
-- 路线图（Roadmap）
-- 致谢
 
 
 ## 核心功能与亮点
@@ -55,7 +36,7 @@
 ```
 [Next.js 前端]  ── fetch ──▶  [/recommend · FastAPI 后端]
    │                                 │
-   │  dispatchEvent('globalplay')     │  CLIP(图像→情绪分布)
+   │  dispatchEvent('globalplay')    │  CLIP(图像→情绪分布)
    ▼                                 │  MySQL(tracks: emotion_json)
 [GlobalAudioBar]  ◀─ 同步播放状态 ─────┘  余弦相似度匹配 top‑k
 ```
@@ -72,7 +53,7 @@
 - 创建虚拟环境并安装依赖：
   ```bash
   cd backend
-  python -m venv .venv && source .venv/bin/activate  # Windows 使用 .venv\Scripts\activate
+  python -m venv .venv && source .venv/bin/activate  # 
   pip install -r requirements.txt
   ```
 - 设置环境变量（示例）：
@@ -170,37 +151,10 @@ mysql -u root -p mywebapp < backend/sql/schema.sql
 - GET `/api/diaries/search?q=...&limit=...`（地点关键字检索）
 
 
-## 设计与实现要点（论文式概览）
-- 表征与检索：
-  - 图像侧：CLIP 在情绪标签集合上计算 `softmax` 概率，得到六维向量 `p∈R^6` 与主导情绪 `argmax(p)`。
-  - 歌曲侧：曲库预存 `emotion_json`（六维），同时存 `dominant_emotion` 以先验过滤。
-  - 召回与排序：先按 `dominant_emotion` 过滤，再以余弦相似度排序 Top‑K，复杂度近似 `O(n)`（n 为过滤后规模）。
-- 体验工程：
-  - 播放统一：事件总线 + 单例 `<audio>`，避免并发播放、保证全站一致 UI。
-  - 语义样式：Tailwind v4 自定义 `--color-brand`，暗黑/浅色全局变量与类选择器配合，避免闪烁与“跳变”。
-  - 可达性：自定义进度条使用 `role=slider`/`aria-valuenow/aria-valuemax`，两端时间采用等宽数字（tabular-nums）。
-
-
-## 常见问题（FAQ）
-- 首次调用 `/recommend` 很慢？
-  - transformers 会按需下载/缓存 CLIP 模型与权重；建议稳定网络或预热一次。
-- 未配置数据库也能跑前端吗？
-  - 目前首页时间线依赖 MySQL；请按“数据库初始化与导入”准备最小数据，或自行改造 `getDiaries` 的数据来源。
-- 推荐的歌曲为什么无法播放？
-  - 推荐只返回歌名/艺人；试听音频使用演示 URL（SoundHelix）做占位，可按你平台的真实音源替换 `TrackPlayerList`/推荐页中的 `SAMPLE_URLS` 与映射逻辑。
-
-
-## 路线图（Roadmap）
-- 歌曲数据：为 tracks 表补充真实可播 URL、封面、预览片段时长等。
-- 推荐增强：加入多模态（歌词/地点/天气）特征与个性化重排序；引入 ANN 向量检索。
-- 账户体系：接入登录、云端用户偏好与跨端同步。
-- 运维发布：Docker 化 + 反向代理 + CDN 静态资源与模型缓存。
-
-
-## 致谢
-- Hugging Face Transformers · CLIP 系列模型
-- Next.js / Tailwind CSS / FastAPI 社区
-
 ---
 
-如需进一步的部署脚本、Dockerfile 或演示数据扩充，我可以按你的运行环境补充相应配置与说明。
+<div align="center">
+
+<strong>⭐ If this project helps you, please give it a Star! ⭐</strong>
+
+</div>
