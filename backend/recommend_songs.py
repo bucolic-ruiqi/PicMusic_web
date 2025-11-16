@@ -41,7 +41,7 @@ def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], to
         conn.close()
         return []
 
-    # 计算相似度并排序（限制 BLAS 线程，规避 macOS 崩溃）
+    # 计算相似度并排序
     scored_songs = []
     with threadpool_limits(limits=1):
         for row in results:
@@ -64,7 +64,7 @@ def recommend_songs_by_emotion(emotion_json: dict, db_config: Dict[str, Any], to
                     "similarity": sim
                 })
             except Exception:
-                continue  # 忽略异常行
+                continue  
 
     # 排序取前 top_k 首，去掉 similarity 字段
     scored_songs.sort(key=lambda x: x["similarity"], reverse=True)
@@ -91,7 +91,6 @@ def main():
     emotion: Dict[str, Any] | None = None
 
     if args.image:
-        # 延迟导入，避免部署无需分析时也加载 transformers
         from image_analyze import analyze_image_emotion
         emotion = analyze_image_emotion(args.image)
     elif args.emotion_json:
