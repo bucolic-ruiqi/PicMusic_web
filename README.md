@@ -88,28 +88,6 @@
 - 打开浏览器访问：http://localhost:3000
 
 
-## 数据库初始化与导入
-1) 创建库与表结构
-```bash
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS mywebapp DEFAULT CHARSET utf8mb4;"
-mysql -u root -p mywebapp < backend/sql/schema.sql
-```
-2) 可选：导入示例数据（CSV）
-- 若客户端允许 `LOCAL INFILE`：
-  - 将 `backend/sql/import_from_data.sql` 中的 CSV 路径改成你的本地绝对路径（当前示例包含作者环境路径占位）。
-  - 以 `--local-infile=1` 连接并执行脚本：
-    ```bash
-    mysql --local-infile=1 -u root -p < backend/sql/import_from_data.sql
-    ```
-- 若服务端限定 `secure_file_priv` 目录：
-  - 参考 `backend/sql/import_from_data_server_infile.sql`：先用 `SELECT @@secure_file_priv;` 查目录，将 CSV 复制进去，调整 `@dir` 路径后执行该脚本。
-
-表结构概览：
-- `users`：基础用户信息
-- `tracks`：歌曲元数据 + `emotion_json`（六维情绪向量）+ `dominant_emotion`
-- `diaries`：日记主体，含图片 URL 的 JSON、歌曲 ID 列表 JSON、收藏标记等
-
-
 ## 开发者指南（目录结构、关键代码）
 - 前端（Next.js App Router）
   - 页面：`frontend/app/`（首页时间线、新建/推荐流程、日记详情等）
@@ -123,32 +101,7 @@ mysql -u root -p mywebapp < backend/sql/schema.sql
   - `backend/sql/*.sql`: 数据库 schema 与 CSV 导入脚本
   - `backend/config.py`: 环境配置（CORS、DB 连接、端口等）
 
-关键交互：
-- 全局播放器事件总线
-  ```ts
-  // 分发（任意播放按钮处）
-  window.dispatchEvent(new CustomEvent("globalplay", {
-    detail: { track, url, command: "play" as const },
-  }));
-  ```
-  `frontend/components/GlobalAudioBar.tsx:6` 监听 `globalplay`，创建/复用 `<audio>`，并以 `play/pause/timeupdate/ended` 事件同步 UI 状态与进度。按钮在播放与暂停时均使用品牌紫色（统一视觉）。
 
-
-## API 说明与示例
-- POST `/recommend`
-  - 入参：`{ image_url: string, top_k?: number }`
-    - `image_url` 支持 `http(s)` 链接、`data:image/...;base64,` 的 Data URL、本地路径（服务端可达）
-  - 返回：`[{ name: string, artist: string }]`
-  - 示例：
-    ```bash
-    curl -X POST http://127.0.0.1:8000/recommend \
-      -H 'Content-Type: application/json' \
-      -d '{"image_url":"data:image/png;base64,....","top_k":10}'
-    ```
-
-前端内部数据接口（Next.js）
-- GET `/api/diaries`、`/api/diaries/[id]`、PUT `/api/diaries/[id]`、DELETE `/api/diaries/[id]`
-- GET `/api/diaries/search?q=...&limit=...`（地点关键字检索）
 
 
 ---
